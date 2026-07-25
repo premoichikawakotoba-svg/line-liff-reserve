@@ -3,7 +3,6 @@
   <head>
     <base target="_top">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- LINEが提供するLIFFの部品（SDK） -->
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
@@ -145,7 +144,7 @@
       const MY_LIFF_ID = "2010675261-CcsARINA"; 
       
       // ★2. 先ほどメモしたGASの「ウェブアプリURL」に書き換えてください
-      const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxgMbrFIta5HTz15yddT5uYgDGCuPk85aie891kVoMQl7knFjXGCAJ2-UutEqg5XrtYKg/exec"; 
+      const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzSuQlOo7GHmp-B38Yc_9IamFj_JnQXOazVLTKnQ0EMczEk9F8h7H53FRaPUC-xG3f5Hg/exec"; 
       
       // ==========================================
       // 文言・メッセージ設定（ここを編集）
@@ -207,7 +206,6 @@
         });
       };
 
-      // ★変更：google.script.runをやめ、一般的な「fetch」通信でGASにデータを強奪しにいきます
       function loadSlotsData() {
         document.getElementById('loading').innerText = '空き枠データを読み込み中...';
         
@@ -280,10 +278,9 @@
         .replace("%TIME%", time)
         .replace("%STAFF%", staff);
 
-        // PCローカルテスト環境ではliff.sendMessagesは動かないので、アラートとコンソールで代用します
+        // PCローカルテスト環境ではliff.sendMessagesは動かないので、アラートを出す
         if (!liff.isInClient()) {
-          alert("【ローカルテスト】LINE送信をシミュレートしました。\n\n" + msgText);
-          console.log("送信メッセージ:", msgText);
+          alert("このページはLINEアプリ専用です。スマートフォンのLINE公式アカウントから開いてください。");
           return;
         }
 
