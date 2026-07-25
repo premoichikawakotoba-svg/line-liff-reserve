@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <!-- LINEが提供するLIFFの部品（SDK） -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+      body {
+        font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+        background-color: #FAFAEE;
+        color: #333333;
+        margin: 0;
+        padding: 20px;
+      }
+      .header-title {
+        text-align: center;
+        color: #555;
+        font-size: 1.2rem;
+        margin-bottom: 5px;
+      }
+      .last-updated {
+        text-align: center;
+        color: #888;
+        font-size: 0.8rem;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #EAE5D9;
+      }
+      .terms-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid #F0ECE1;
+      }
+      .terms-text {
+        font-size: 0.9rem;
+        line-height: 1.6;
+        color: #555;
+        margin-bottom: 20px;
+        white-space: pre-wrap;
+      }
+      .card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid #F0ECE1;
+      }
+      .slot-info {
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .staff-info {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 15px;
+      }
+      .reserve-btn, .agree-btn {
+        display: block;
+        text-align: center;
+        background-color: #F0803C;
+        color: white;
+        text-decoration: none;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: opacity 0.2s;
+        width: 100%;          
+        max-width: 300px;     
+        margin: 0 auto;       
+        box-sizing: border-box; 
+        border: none;
+        cursor: pointer;
+      }
+      .reserve-btn:active, .agree-btn:active {
+        opacity: 0.7;
+      }
+      #loading {
+        text-align: center;
+        color: #888;
+        margin-top: 50px;
+      }
+      .empty-msg {
+        text-align: center;
+        color: #888;
+        margin-top: 30px;
+        background-color: #FFF;
+        padding: 20px;
+        border-radius: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    
+    <div class="header-title">キャンセル枠 空き状況</div>
+    <div class="last-updated" id="update-time" style="display:none;">更新日時：--/-- --:--</div>
+    
+    <div id="loading">接続中...</div>
+
+    <!-- 規約同意エリア（最初は非表示） -->
+    <div id="terms-area" style="display: none;">
+      <div class="terms-card">
+        <div class="terms-text">【ご利用にあたりまして】
+当店のキャンセル枠予約をご利用いただきありがとうございます。
+
+ご提示いただく個人情報（LINE登録名等）は、予約受付・日時の確認、およびサービス提供に関するご連絡の目的にのみ利用いたします。
+
+上記の内容、および免責事項に同意の上、予約枠の確認へお進みください。</div>
+        <button class="agree-btn" onclick="acceptTerms()">個人情報および免責事項に同意して進む</button>
+      </div>
+    </div>
+    
+    <!-- 枠一覧表示エリア（最初は非表示） -->
+    <div id="slot-container" style="display: none;"></div>
+
+    <script>
+      // ★1. あなたのLIFF IDに書き換えてください
+      const MY_LIFF_ID = "2010675261-CcsARINA"; 
+      
+      // ★2. 先ほどメモしたGASの「ウェブアプリURL」に書き換えてください
+      const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxgMbrFIta5HTz15yddT5uYgDGCuPk85aie891kVoMQl7knFjXGCAJ2-UutEqg5XrtYKg/exec"; 
+      
+      let cachedResult = null;
+
+      window.onload = function() {
+        liff.init({ 
+          liffId: MY_LIFF_ID,
+          withLoginOnLaunch: true 
+        })
+        .then(() => {
+          // ローカルPCのブラウザで開いた場合、liff.isLoggedIn()はfalseになりますが、
+          // テストを続行できるようにそのままデータ取得に進ませます
+          loadSlotsData();
+        })
+        .catch((err) => {
+          // LIFF環境外（PCブラウザ直開きなど）のエラーは無視してデータ取得を進める
+          console.warn("LIFF初期化スキップ（ローカルテスト中）:", err);
+          loadSlotsData();
+        });
+      };
+
+      // ★変更：google.script.runをやめ、一般的な「fetch」通信でGASにデータを強奪しにいきます
+      function loadSlotsData() {
+        document.getElementById('loading').innerText = '空き枠データを読み込み中...';
+        
+        fetch(GAS_API_URL)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('ネットワーク応答が正常ではありません');
+            }
+            return response.json(); // GASから届いたJSONデータを解析
+          })
+          .then(data => {
+            handleDataCheck(data);
+          })
+          .catch(error => {
+            showError(error);
+          });
+      }
+
+      function handleDataCheck(result) {
+        document.getElementById('loading').style.display = 'none';
+        
+        if (!result.slots || result.slots.length === 0) {
+          document.getElementById('loading').style.display = 'block';
+          document.getElementById('loading').innerHTML = '<div class="empty-msg">現在、ご案内できる空き枠はありません。</div>';
+          return;
+        }
+
+        cachedResult = result;
+        document.getElementById('terms-area').style.display = 'block';
+      }
+
+      function acceptTerms() {
+        document.getElementById('terms-area').style.display = 'none';
+        document.getElementById('update-time').style.display = 'block';
+        document.getElementById('slot-container').style.display = 'block';
+        displaySlots(cachedResult);
+      }
+
+      function displaySlots(result) {
+        document.getElementById('update-time').innerText = '最終更新：' + result.lastUpdated;
+
+        var slots = result.slots;
+        var container = document.getElementById('slot-container');
+        var html = '';
+
+        for (var i = 0; i < slots.length; i++) {
+          html += '<div class="card">';
+          html += '  <div class="slot-info">' + slots[i].date + ' (' + slots[i].time + ')</div>';
+          html += '  <div class="staff-info">担当：' + slots[i].staff + '</div>';
+          html += '  <button class="reserve-btn" onclick="submitReservation(\'' + slots[i].date + '\', \'' + slots[i].time + '\', \'' + slots[i].staff + '\')">この日時で予約を申し込む</button>';
+          html += '</div>';
+        }
+        
+        container.innerHTML = html;
+      }
+
+      function submitReservation(date, time, staff) {
+        var msgText = "【LIFF送信テスト】\n" +
+                      "このメッセージが表示されていれば、LIFFの自動送信テストは成功です！\n" +
+                      "（選択した枠：%DATE% %TIME% / 担当：%STAFF%）"
+                      .replace("%DATE%", date)
+                      .replace("%TIME%", time)
+                      .replace("%STAFF%", staff);
+
+        // PCローカルテスト環境ではliff.sendMessagesは動かないので、アラートとコンソールで代用します
+        if (!liff.isInClient()) {
+          alert("【ローカルテスト】LINE送信をシミュレートしました。\n\n" + msgText);
+          console.log("送信メッセージ:", msgText);
+          return;
+        }
+
+        liff.sendMessages([{
+          type: 'text',
+          text: msgText
+        }])
+        .then(() => {
+          liff.closeWindow();
+        })
+        .catch((err) => {
+          alert('メッセージの送信に失敗しました。');
+          console.error(err);
+        });
+      }
+
+      function showError(error) {
+        document.getElementById('loading').innerHTML = 'データの読み込みに失敗しました。<br><span style="font-size:0.8rem;color:red;">' + error.message + '</span>';
+        console.error(error);
+      }
+    </script>
+  </body>
+</html>
