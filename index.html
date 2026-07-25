@@ -35,12 +35,32 @@
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         border: 1px solid #F0ECE1;
       }
+      /* 見出しのスタイル（新設） */
+      .terms-alert-title {
+        font-weight: bold;
+        color: #D9534F; /* 警告色（マイルドな赤） */
+        font-size: 0.95rem;
+        margin-bottom: 5px;
+      }
+      .terms-alert-sub {
+        font-size: 0.8rem;
+        color: #666666;
+        line-height: 1.4;
+        margin-bottom: 15px;
+      }
+      /* 本文ボックスのスタイル（スクロール化） */
       .terms-text {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         line-height: 1.6;
-        color: #555;
-        margin-bottom: 20px;
+        color: #555555;
+        height: 160px;          /* ボックスの高さ（スマホで押しやすい絶妙なサイズ） */
+        overflow-y: scroll;     /* 縦スクロールを有効にする */
+        border: 1px solid #EAE5D9;
+        padding: 12px;
+        background-color: #FAFAFA;
+        border-radius: 6px;
         white-space: pre-wrap;
+        margin-bottom: 15px;
       }
       .card {
         background-color: #FFFFFF;
@@ -105,12 +125,13 @@
     <!-- 規約同意エリア（最初は非表示） -->
     <div id="terms-area" style="display: none;">
       <div class="terms-card">
-        <div class="terms-text">【ご利用にあたりまして】
-当店のキャンセル枠予約をご利用いただきありがとうございます。
-
-ご提示いただく個人情報（LINE登録名等）は、予約受付・日時の確認、およびサービス提供に関するご連絡の目的にのみ利用いたします。
-
-上記の内容、および免責事項に同意の上、予約枠の確認へお進みください。</div>
+        <!-- ボックスの外に出す見出し部分 -->
+        <div class="terms-alert-title">⚠️ お申し込み前に（免責事項：必ずご確認ください）</div>
+        <div class="terms-alert-sub">※「個人情報および免責事項に同意して進む」ボタンの押下をもって、下記「個人情報の取り扱いについて」に同意したものとみなします。</div>
+        
+        <!-- ここがスクロールする本文ボックス -->
+        <div class="terms-text" id="terms-content"></div>
+        
         <button class="agree-btn" onclick="acceptTerms()">個人情報および免責事項に同意して進む</button>
       </div>
     </div>
@@ -125,9 +146,50 @@
       // ★2. 先ほどメモしたGASの「ウェブアプリURL」に書き換えてください
       const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxgMbrFIta5HTz15yddT5uYgDGCuPk85aie891kVoMQl7knFjXGCAJ2-UutEqg5XrtYKg/exec"; 
       
+      // ==========================================
+      // 文言・メッセージ設定（ここを編集）
+      // ==========================================
+     const APP_CONFIG = {
+      // 画面の最初に表示する規約・案内文
+      termsText: `【免責事項】
+      本システムからの送信は「仮予約」であり、予約を確約するものではございません。システムへの反映は随時行なっておりますが、申し込み多数の場合はご予約を承れない場合がございます。
+      当教室からの「予約確定のご連絡（LINEまたはお電話）」をもちまして、正式に予約確定となります。万が一ご案内できない場合は、大変恐れ入りますが、折り返しその旨をご連絡させていただきます。
+      あらかじめご了承のほどお願い申し上げます。
+
+      【個人情報の取り扱いについて】
+      本フォームよりご提供いただく個人情報の取り扱いについて、以下の通り適切に管理・保護いたします。内容をご確認いただき、ご同意の上で送信してください。
+
+      1. 個人情報の取得と利用目的
+      本システムではLINEユーザーID、LINE登録名等の個人情報を収集し、以下の目的の範囲内でのみ利用します。
+      ・空き枠予約にともなう申込処理および受付管理のため
+      ・予約内容の確認、変更、その他運営上必要なご連絡のため
+      ・サービス向上および利用動向の分析・把握のため
+
+      2. 個人情報の第三者提供について
+      法令に基づく場合を除き、ご本人の同意なく個人情報を第三者に提供することはありません。
+
+      3. 安全管理措置
+      お預かりした個人情報は、漏洩、滅失、毀損の防止のために適切な安全管理措置を講じ、厳重に管理いたします。
+
+      4. 個人情報の開示・訂正・利用停止について
+      個人情報の開示、訂正、削除、利用停止等のご請求があった場合は、ご本人であることを確認の上、速やかに対応いたします。教室まで直接お問い合わせください。
+
+      ※「個人情報の取扱および免責事項に同意して進む」ボタンの押下をもって、上記「個人情報の取り扱いについて」に同意したものとみなします。
+      `,
+
+      // LINEのトークに自動送信させるメッセージの雛形
+      // （%DATE%, %TIME%, %STAFF% の部分は自動で置き換わります）
+      lineMessageTemplate: `【キャンセル枠・仮予約申込】
+      以下の枠での予約を希望します。
+      ・日時：%DATE% %TIME%
+      ・担当：%STAFF% `
+      };
+
       let cachedResult = null;
 
       window.onload = function() {
+        document.getElementById('terms-content').innerText = APP_CONFIG.termsText;
+
         liff.init({ 
           liffId: MY_LIFF_ID,
           withLoginOnLaunch: true 
@@ -173,6 +235,10 @@
         }
 
         cachedResult = result;
+        // 免責事項の行頭の空白やタブを消去
+        var cleanText = APP_CONFIG.termsText.replace(/^[ \t]+/gm, '');
+        document.getElementById('terms-content').innerText = cleanText;
+
         document.getElementById('terms-area').style.display = 'block';
       }
 
@@ -202,12 +268,16 @@
       }
 
       function submitReservation(date, time, staff) {
-        var msgText = "【LIFF送信テスト】\n" +
-                      "このメッセージが表示されていれば、LIFFの自動送信テストは成功です！\n" +
-                      "（選択した枠：%DATE% %TIME% / 担当：%STAFF%）"
-                      .replace("%DATE%", date)
-                      .replace("%TIME%", time)
-                      .replace("%STAFF%", staff);
+        var confirmMsg = "以下の内容で申し込みしますか？\n\n" +
+                         "・日時：" + date + " " + time + "\n" +
+                         "・担当：" + staff;
+        if (!confirm(confirmMsg)) {
+          return;
+        }
+        var msgText = APP_CONFIG.lineMessageTemplate
+        .replace("%DATE%", date)
+        .replace("%TIME%", time)
+        .replace("%STAFF%", staff);
 
         // PCローカルテスト環境ではliff.sendMessagesは動かないので、アラートとコンソールで代用します
         if (!liff.isInClient()) {
