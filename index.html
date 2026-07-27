@@ -143,7 +143,7 @@
       // ★1. あなたのLIFF IDに書き換えてください
       const MY_LIFF_ID = "2010675261-CcsARINA"; 
       
-      // ★2. 先ほどメモしたGASの「ウェブアプリURL」に書き換えてください
+      // ★2. GASの「ウェブアプリURL」に書き換えてください
       const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzSuQlOo7GHmp-B38Yc_9IamFj_JnQXOazVLTKnQ0EMczEk9F8h7H53FRaPUC-xG3f5Hg/exec"; 
       
       // ==========================================
@@ -266,7 +266,7 @@
         container.innerHTML = html;
       }
 
-      function submitReservation(date, time, staff) {
+function submitReservation(date, time, staff) {
         var confirmMsg = "以下の内容で申し込みしますか？\n\n" +
                          "・日時：" + date + " " + time + "\n" +
                          "・担当：" + staff;
@@ -284,16 +284,39 @@
           return;
         }
 
+        // 1. まず先にLINEへのメッセージ送信を実行する
         liff.sendMessages([{
           type: 'text',
           text: msgText
         }])
         .then(() => {
+          // 2. LINE側が成功したら、LINEプロフィールからニックネームを取得する
+          return liff.getProfile();
+        })
+        .then(profile => {
+          var dateTimeStr = date + " " + time;
+          var postData = {
+            dateTimeStr: dateTimeStr,
+            staffName: staff,
+            uName: profile.displayName
+          };
+
+          // 3. GASへデータを送信してスプレッドシート記録＆メール送信を行う
+          return fetch(GAS_API_URL, {
+            method: "POST",
+            body: JSON.stringify(postData)
+          });
+        })
+        .then(() => {
+          // 4. すべて完了したらLIFF画面を閉じる
           liff.closeWindow();
         })
         .catch((err) => {
-          alert('メッセージの送信に失敗しました。');
+          // どこかのステップでエラーが出た場合の処理
+          alert('処理中にエラーが発生しました。');
           console.error(err);
+          // LINE送信自体は成功している可能性が高いため、画面を閉じます
+          liff.closeWindow();
         });
       }
 
