@@ -36,10 +36,9 @@
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         border: 1px solid #F0ECE1;
       }
-      /* 見出しのスタイル（新設） */
       .terms-alert-title {
         font-weight: bold;
-        color: #D9534F; /* 警告色（マイルドな赤） */
+        color: #D9534F;
         font-size: 0.95rem;
         margin-bottom: 5px;
       }
@@ -49,13 +48,12 @@
         line-height: 1.4;
         margin-bottom: 15px;
       }
-      /* 本文ボックスのスタイル（スクロール化） */
       .terms-text {
         font-size: 0.85rem;
         line-height: 1.6;
         color: #555555;
-        height: 160px;          /* ボックスの高さ（スマホで押しやすい絶妙なサイズ） */
-        overflow-y: scroll;     /* 縦スクロールを有効にする */
+        height: 160px;
+        overflow-y: scroll;
         border: 1px solid #EAE5D9;
         padding: 12px;
         background-color: #FAFAFA;
@@ -101,11 +99,51 @@
       .reserve-btn:active, .agree-btn:active {
         opacity: 0.7;
       }
+      
+      /* ローディング用スタイル */
       #loading {
         text-align: center;
-        color: #888;
-        margin-top: 50px;
+        color: #666;
+        margin-top: 30px;
+        padding: 20px;
       }
+      
+      /* クルクル回るスピナーアニメーション */
+      .spinner {
+        width: 36px;
+        height: 36px;
+        border: 4px solid #EAE5D9;
+        border-top: 4px solid #F0803C;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 15px auto;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      /* スケルトンUI（骨組みのアニメーション） */
+      .skeleton-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border: 1px solid #F0ECE1;
+      }
+      .skeleton-line {
+        height: 16px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+      @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
       .empty-msg {
         text-align: center;
         color: #888;
@@ -121,16 +159,33 @@
     <div class="header-title">キャンセル枠 空き状況</div>
     <div class="last-updated" id="update-time" style="display:none;">更新日時：--/-- --:--</div>
     
-    <div id="loading">接続中...</div>
+    <!-- ローディング表示エリア -->
+    <div id="loading">
+      <div class="spinner"></div>
+      <div style="font-weight: bold; font-size: 1rem; color: #444;" id="loading-text">最新の空き状況を確認中...</div>
+      <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">少々お待ちください</div>
+      
+      <!-- データ読み込み中にカードの骨組みを表示 -->
+      <div style="margin-top: 25px;">
+        <div class="skeleton-card">
+          <div class="skeleton-line" style="width: 60%;"></div>
+          <div class="skeleton-line" style="width: 40%;"></div>
+          <div class="skeleton-line" style="height: 40px; margin-top: 15px; border-radius: 8px;"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-line" style="width: 50%;"></div>
+          <div class="skeleton-line" style="width: 35%;"></div>
+          <div class="skeleton-line" style="height: 40px; margin-top: 15px; border-radius: 8px;"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- 規約同意エリア（最初は非表示） -->
     <div id="terms-area" style="display: none;">
       <div class="terms-card">
-        <!-- ボックスの外に出す見出し部分 -->
         <div class="terms-alert-title">⚠️ お申し込み前に（免責事項：必ずご確認ください）</div>
         <div class="terms-alert-sub">※「個人情報および免責事項に同意して進む」ボタンの押下をもって、下記「個人情報の取り扱いについて」に同意したものとみなします。</div>
         
-        <!-- ここがスクロールする本文ボックス -->
         <div class="terms-text" id="terms-content"></div>
         
         <button class="agree-btn" onclick="acceptTerms()">個人情報および免責事項に同意して進む</button>
@@ -140,56 +195,50 @@
     <!-- 枠一覧表示エリア（最初は非表示） -->
     <div id="slot-container" style="display: none;"></div>
 
-    <!-- 相信時の表示 -->
+    <!-- 送信時の表示 -->
     <div id="loading-mask" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); color: #fff; z-index: 9999; justify-content: center; align-items: center; flex-direction: column; font-size: 18px; font-weight: bold;">
+      <div class="spinner" style="border-top-color: #fff;"></div>
       <div style="margin-bottom: 10px;">送信処理中...</div>
       <div style="font-size: 14px; color: #ccc;">画面を閉じずにお待ちください</div>
     </div>
 
     <script>
-      // ★1. あなたのLIFF IDに書き換えてください
+      // 1. LIFF ID
       const MY_LIFF_ID = "2010675261-CcsARINA"; 
       
-      // ★2. GASの「ウェブアプリURL」に書き換えてください
+      // 2. GASの「ウェブアプリURL」
       const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxgMbrFIta5HTz15yddT5uYgDGCuPk85aie891kVoMQl7knFjXGCAJ2-UutEqg5XrtYKg/exec"; 
       
-      // ==========================================
-      // 文言・メッセージ設定（ここを編集）
-      // ==========================================
-     const APP_CONFIG = {
-      // 画面の最初に表示する規約・案内文
-      termsText: `【免責事項】
-      本システムからの送信は「仮予約」であり、予約を確約するものではございません。システムへの反映は随時行なっておりますが、申し込み多数の場合はご予約を承れない場合がございます。
-      当教室からの「予約確定のご連絡（LINEまたはお電話）」をもちまして、正式に予約確定となります。万が一ご案内できない場合は、大変恐れ入りますが、折り返しその旨をご連絡させていただきます。
-      あらかじめご了承のほどお願い申し上げます。
+      const APP_CONFIG = {
+        termsText: `【免責事項】
+本システムからの送信は「仮予約」であり、予約を確約するものではございません。システムへの反映は随時行なっておりますが、申し込み多数の場合はご予約を承れない場合がございます。
+当教室からの「予約確定のご連絡（LINEまたはお電話）」をもちまして、正式に予約確定となります。万が一ご案内できない場合は、大変恐れ入りますが、折り返しその旨をご連絡させていただきます。
+あらかじめご了承のほどお願い申し上げます。
 
-      【個人情報の取り扱いについて】
-      本フォームよりご提供いただく個人情報の取り扱いについて、以下の通り適切に管理・保護いたします。内容をご確認いただき、ご同意の上で送信してください。
+【個人情報の取り扱いについて】
+本フォームよりご提供いただく個人情報の取り扱いについて、以下の通り適切に管理・保護いたします。内容をご確認いただき、ご同意の上で送信してください。
 
-      1. 個人情報の取得と利用目的
-      本システムではLINEユーザーID、LINE登録名等の個人情報を収集し、以下の目的の範囲内でのみ利用します。
-      ・空き枠予約にともなう申込処理および受付管理のため
-      ・予約内容の確認、変更、その他運営上必要なご連絡のため
-      ・サービス向上および利用動向の分析・把握のため
+1. 個人情報の取得と利用目的
+本システムではLINEユーザーID、LINE登録名等の個人情報を収集し、以下の目的の範囲内でのみ利用します。
+・空き枠予約にともなう申込処理および受付管理のため
+・予約内容の確認、変更、その他運営上必要なご連絡のため
+・サービス向上および利用動向の分析・把握のため
 
-      2. 個人情報の第三者提供について
-      法令に基づく場合を除き、ご本人の同意なく個人情報を第三者に提供することはありません。
+2. 個人情報の第三者提供について
+法令に基づく場合を除き、ご本人の同意なく個人情報を第三者に提供することはありません。
 
-      3. 安全管理措置
-      お預かりした個人情報は、漏洩、滅失、毀損の防止のために適切な安全管理措置を講じ、厳重に管理いたします。
+3. 安全管理措置
+お預かりした個人情報は、漏洩、滅失、毀損の防止のために適切な安全管理措置を講じ、厳重に管理いたします。
 
-      4. 個人情報の開示・訂正・利用停止について
-      個人情報の開示、訂正、削除、利用停止等のご請求があった場合は、ご本人であることを確認の上、速やかに対応いたします。教室まで直接お問い合わせください。
+4. 個人情報の開示・訂正・利用停止について
+個人情報の開示、訂正、削除、利用停止等のご請求があった場合は、ご本人であることを確認の上、速やかに対応いたします。教室まで直接お問い合わせください。
 
-      ※「個人情報の取扱および免責事項に同意して進む」ボタンの押下をもって、上記「個人情報の取り扱いについて」に同意したものとみなします。
-      `,
+※「個人情報の取扱および免責事項に同意して進む」ボタンの押下をもって、上記「個人情報の取り扱いについて」に同意したものとみなします。`,
 
-      // LINEのトークに自動送信させるメッセージの雛形
-      // （%DATE%, %TIME%, %STAFF% の部分は自動で置き換わります）
-      lineMessageTemplate: `【キャンセル枠・仮予約申込】
-      以下の枠での予約を希望します。
-      ・日時：%DATE% %TIME%
-      ・担当：%STAFF% `
+        lineMessageTemplate: `【キャンセル枠・仮予約申込】
+以下の枠での予約を希望します。
+・日時：%DATE% %TIME%
+・担当：%STAFF% `
       };
 
       let cachedResult = null;
@@ -202,26 +251,24 @@
           withLoginOnLaunch: true 
         })
         .then(() => {
-          // ローカルPCのブラウザで開いた場合、liff.isLoggedIn()はfalseになりますが、
-          // テストを続行できるようにそのままデータ取得に進ませます
           loadSlotsData();
         })
         .catch((err) => {
-          // LIFF環境外（PCブラウザ直開きなど）のエラーは無視してデータ取得を進める
           console.warn("LIFF初期化スキップ（ローカルテスト中）:", err);
           loadSlotsData();
         });
       };
 
       function loadSlotsData() {
-        document.getElementById('loading').innerText = '空き枠データを読み込み中...';
+        // 読み込み中テキスト
+        document.getElementById('loading-text').innerText = 'スプレッドシートから最新枠を取得中...';
         
         fetch(GAS_API_URL)
           .then(response => {
             if (!response.ok) {
               throw new Error('ネットワーク応答が正常ではありません');
             }
-            return response.json(); // GASから届いたJSONデータを解析
+            return response.json();
           })
           .then(data => {
             handleDataCheck(data);
@@ -241,7 +288,6 @@
         }
 
         cachedResult = result;
-        // 免責事項の行頭の空白やタブを消去
         var cleanText = APP_CONFIG.termsText.replace(/^[ \t]+/gm, '');
         document.getElementById('terms-content').innerText = cleanText;
 
@@ -282,7 +328,7 @@
         }
 
         var mask = document.getElementById('loading-mask');
-        if (mask) mask.style.display = 'flex'; // 処理開始：ローディング画面を表示して操作をブロックする
+        if (mask) mask.style.display = 'flex';
         
         var msgText = APP_CONFIG.lineMessageTemplate
         .replace(/^[ \t]+/gm, '')
@@ -290,19 +336,16 @@
         .replace("%TIME%", time)
         .replace("%STAFF%", staff);
 
-        // PCローカルテスト環境ではliff.sendMessagesは動かないので、アラートを出す
         if (!liff.isInClient()) {
           alert("このページはLINEアプリ専用です。スマートフォンのLINE公式アカウントから開いてください。");
           return;
         }
 
-        // 1. まず先にLINEへのメッセージ送信を実行する
         liff.sendMessages([{
           type: 'text',
           text: msgText
         }])
         .then(() => {
-          // 2. LINE側が成功したら、LINEプロフィールからニックネームを取得する
           return liff.getProfile();
         })
         .then(profile => {
@@ -313,22 +356,18 @@
             uName: profile.displayName
           };
 
-          // 3. GASへデータを送信してスプレッドシート記録＆メール送信を行う
           return fetch(GAS_API_URL, {
             method: "POST",
             body: JSON.stringify(postData)
           });
         })
         .then(() => {
-          // 4. すべて完了したらLIFF画面を閉じる
           liff.closeWindow();
         })
         .catch((err) => {
-          // どこかのステップでエラーが出た場合の処理
-          if (mask) mask.style.display = 'none'; // エラー時はアラートが見えるようにマスクを隠す
+          if (mask) mask.style.display = 'none';
           alert('処理中にエラーが発生しました。');
           console.error(err);
-          // LINE送信自体は成功している可能性が高いため、画面を閉じます
           liff.closeWindow();
         });
       }
